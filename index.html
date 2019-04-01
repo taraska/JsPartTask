@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>front task</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+<body>
+<div id="task">
+    <div class="container">
+        <table class="table" v-for="items in store">
+            <tr>
+                <th class="col-md-12">{{ items.cat }}</th>
+            </tr>
+            <tr v-for="item in items.arr">
+                <td class="col-md-10">{{ item.name }} ({{ item.count }})</td>
+                <td class="col-md-2">
+                    <a href="#" class="btn price" v-bind:class="item.c" v-on:click="addToCart(item, items.cat)">{{item.price
+                        }}</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="cart">
+        <div class="container">
+            <table class="table">
+                <tr>
+                    <th>Наименование товара и описание</th>
+                    <th>Количество</th>
+                    <th>Цена</th>
+                    <th></th>
+                </tr>
+                <tr v-for="item in cart">
+                    <td>{{ item.itemName }}</td>
+                    <td><input type="text" value="1" v-on:input="checkItemCount($event, item.maxCount)"></td>
+                    <td>{{ item.price }}</td>
+                    <td><a href="#" class="btn btn-info" v-on:click="deleteFromCart(item)">удалить</a></td>
+                </tr>
+                <tr>
+                    <td>Сумма: {{sum}}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="names.js"></script>
+<script type="text/javascript" src="data.json"></script>
+<script type="text/javascript">
+
+    let app = new Vue({
+        el: '#task',
+        data: {
+            store: {},
+            cart: [],
+            sum: 0,
+            exchange: 60
+        },
+        watch: {},
+        created() {
+            this.store = this.getStoreObject();
+        },
+        computed: {},
+        mounted() {
+
+        },
+        methods: {
+            /**
+             * parse json file and make store object
+             * @return object main store
+             * */
+            getStoreObject: function () {
+
+                let dataFile = JSON.stringify(data.Value.Goods);
+                let dataFilter = {};
+                const json = JSON.parse(dataFile);
+
+                for (data in json) {
+
+                    let groupId = json[data].G;
+                    let itemId = json[data].T;
+
+                    if (typeof dataFilter[groupId] !== 'undefined') {
+                        dataFilter[groupId][itemId] = {
+                            "price": json[data].C * this.exchange,
+                            "count": json[data].P * this.exchange,
+                            "c": "btn-info"
+                        };
+                    } else {
+                        dataFilter[groupId] = {};
+                        dataFilter[groupId][itemId] = {
+                            "price": json[data].C * this.exchange,
+                            "count": json[data].P * this.exchange,
+                            "c": "btn-info"
+                        };
+                    }
+                }
+
+                let storeObj = [];
+                for (index in dataFilter) {
+
+                    if (typeof store[index].G !== 'undefined') {
+                        let catName = store[index].G;
+
+                        for (item in store[index].B) {
+                            if (typeof dataFilter[index][item] === 'undefined') {
+                                continue;
+                            }
+                            dataFilter[index][item].name = store[index].B[item].N
+                        }
+
+                        storeObj.push({
+                            'cat': catName,
+                            'arr': dataFilter[index]
+                        });
+                    }
+                }
+
+
+                return storeObj;
+            },
+            /**
+             * add item to cart
+             * @param item object of store
+             * @param itemCat string category name
+             * */
+            addToCart(item, itemCat) {
+
+                let cartItem = {
+                    'itemName': itemCat + " " + item.name,
+                    'price': item.price,
+                    'maxCount': item.count,
+                };
+
+                this.cart.push(cartItem);
+
+                this.sum += item.price;
+
+                this.sum = this.roundToTwo(this.sum);
+            },
+            /**
+             * round math function
+             * @param num int
+             * */
+            roundToTwo(num) {
+                return +(Math.round(num + "e+2") + "e-2");
+            },
+            /**
+             * delete item by cart
+             * @param value index of item in the cart
+             * */
+            deleteFromCart(value) {
+                let index = this.cart.indexOf(value);
+
+                if (index > -1) {
+                    this.sum -= value.price;
+
+                    this.cart.splice(index, 1)
+
+                }
+            },
+            /**
+             * check max value count of item
+             * @param e event
+             * @param maxValue maximum count of item
+             * */
+            checkItemCount(e, maxValue) {
+                if (e.target.value > maxValue) {
+                    alert("Превышен лимит покупки");
+                    e.target.value = maxValue;
+                }
+            }
+        },
+    });
+
+    /**
+     * interval business function, which change exchange rating
+     * every 15 sec
+     * */
+    setInterval(function () {
+        let oldExchange = app.exchange;
+
+        let max = 80;
+        let min = 20;
+        let newExchange = Math.floor(Math.random() * (max - min + 1)) + min;
+
+        for (item in app.store) {
+            let array = app.store[item].arr;
+
+            for (i in array) {
+
+                let newValue = app.roundToTwo((array[i].price / oldExchange) * newExchange);
+                let oldValue = array[i].price;
+
+                if (oldValue > newValue) {
+                    array[i].c = "btn-danger";
+                } else if (oldValue < newValue) {
+                    array[i].c = "btn-success";
+                } else {
+                    array[i].c = "btn-info";
+                }
+
+                array[i].price = newValue;
+            }
+        }
+        app.exchange = newExchange;
+
+    }, 15000);
+</script>
+</body>
+</html>
